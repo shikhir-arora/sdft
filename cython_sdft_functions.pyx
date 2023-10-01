@@ -50,10 +50,10 @@ cpdef cython_sdft(complex[::1] signal, int n):
 
     return np.asarray(x)
 
-# Cython version of stable SDFT
+# [!! warning: experimental wrt optimization] Cython version of stable SDFT
 cpdef cython_stable_sdft(complex[::1] signal, int N, int k):
     """
-    Compute the Stable SDFT Network (SDFT) of a given signal.
+    Compute the Stable SDFT Network (SDFT) of a given signal at frequency bin k.
     """
     cdef complex exp_factor = complex_exp(2 * pi * k / N)
     cdef complex cos_factor = -2 * cos(2 * pi * k / N)
@@ -73,7 +73,7 @@ cpdef cython_stable_sdft(complex[::1] signal, int N, int k):
     return np.asarray(y)
 
 # Cython version of psychoacoustic_mapping
-cpdef Dict[str, float] cython_psychoacoustic_mapping(float[::1] freqs, float[::1] mags):
+cpdef Dict[str, float] cython_psychoacoustic_mapping(double[::1] freqs, double[::1] mags):
     cdef Dict[str, tuple] bands = {
         "Sub-Bass": (20, 120),
         "Bass": (120, 420),
@@ -87,12 +87,12 @@ cpdef Dict[str, float] cython_psychoacoustic_mapping(float[::1] freqs, float[::1
     cdef Dict[str, float] band_values = {}
     cdef str band
     cdef tuple freq_range
-    cdef float f_low, f_high
-    cdef float sum_value = 0.0  
+    cdef double f_low, f_high
+    cdef double sum_value = 0.0
 
     for band, freq_range in bands.items():
         f_low, f_high = freq_range
-        sum_value = 0.0  
+        sum_value = 0.0
         for i in range(len(freqs)):
             if freqs[i] >= f_low and freqs[i] < f_high:
                 sum_value += mags[i]
