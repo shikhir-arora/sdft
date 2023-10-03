@@ -1,4 +1,4 @@
-# TODO
+# TODO Docs/FAQ/Analysis
 
 
 ![Figure_1](https://github.com/shikhir-arora/sdft/assets/8797918/ce7b2478-01fa-43af-a802-f9888f3f01e0) 
@@ -30,6 +30,7 @@ Per loop time (Cython): 7.804499997291713e-06 seconds
 Time taken for 1000 runs (Normal): 0.5207489170134068 seconds
 Per loop time (Normal): 0.0005207489170134067 seconds
 ```
+**Cython is approximately 66.75 times faster in this example.**
 
 ```
 Time taken for 100000 runs (Cython): 0.783888083009515 seconds
@@ -38,6 +39,8 @@ Per loop time (Cython): 7.83888083009515e-06 seconds
 Time taken for 100000 runs (Normal): 47.388167375000194 seconds
 Per loop time (Normal): 0.0004738816737500019 seconds
 ```
+**Cython is approximately 60.48 times faster in this case.**
+
 
 *yes, it really is that much faster! 🙂* 
 
@@ -60,6 +63,8 @@ Stable SDFT - Time per loop: 0.000227197125001112 seconds
 
 Cython Stable SDFT is faster.
 ```
+**Cython Stable SDFT is approximately 1.31 times faster in this example.**
+
 
 ```
 Cython Stable SDFT - Time taken for 1000000 runs: 170.44354233302874 seconds
@@ -70,6 +75,8 @@ Stable SDFT - Time per loop: 0.00022060454512498107 seconds
 
 Cython Stable SDFT is faster.
 ```
+**Cython Stable SDFT is approximately 1.29 times faster in this example.**
+
 
 ```
 Cython Stable SDFT - Time taken for 100000 runs: 17.084494707989506 seconds
@@ -80,6 +87,8 @@ Stable SDFT - Time per loop: 0.00022193888457957655 seconds
 
 Cython Stable SDFT is faster.
 ```
+**Cython Stable SDFT is approximately 1.30 times faster in this example.**
+
 
 With a lot of cythoning, we've accomplished the speedups.
 
