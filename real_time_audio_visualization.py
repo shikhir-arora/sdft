@@ -23,7 +23,7 @@ def sdft(signal: np.ndarray, n: int) -> np.ndarray:
         n (int): The number of points to use for the Fourier Transform.
 
     Returns:
-        np.ndarray: The SDFT of the input signal.
+        np.ndarray: The SDFT of the input signal over N samples.
     """
     omega = np.exp(-1j * 2 * np.pi / n)
     x_prev = 0 + 0j
@@ -44,7 +44,7 @@ def stable_sdft(signal: np.ndarray, N: int, k: int) -> np.ndarray:
     Parameters:
         signal (np.ndarray): The input audio signal array.
         N (int): The number of points to use for the Fourier Transform.
-        k (int): The frequency index for which the SDFT is calculated.
+        k (int): The frequency index bin for which the SDFT is calculated.
 
     Returns:
         np.ndarray: The stable SDFT of the input signal at the frequency index k.
@@ -217,9 +217,10 @@ def update_sdft(frame: int) -> List:
 def update_stable_sdft(frame: int) -> List[Any]:
     """
     Update function for Matplotlib FuncAnimation for each frame in the animation.
-    This uses the stable_sdft function and is experimental for this application.
-    Special case for k = fq bin 
-
+    This uses the stable_sdft function and is computationally stable. 
+    This moving SDFT provides a network at k-th frequency bin, subject to fs and N
+    It differs slightly from the regular SDFT provided here, which is for all N
+   
     Parameters:
         frame (int): The current frame number in the animation.
 
@@ -233,7 +234,7 @@ def update_stable_sdft(frame: int) -> List[Any]:
     audio_data_complex = audio_data.astype(np.complex128, copy=False)
 
     # calculate bin for k=1
-    sdft_result_k1 = stable_sdft(audio_data_complex, N, k) # cython super experimental here, use normal CPython for now
+    sdft_result_k1 = cython_stable_sdft(audio_data_complex, N, k) # cython is now extremely optmised for this function
     valid_magnitudes = np.abs(sdft_result_k1)
 
     freqs = np.linspace(0, fs // 2, len(valid_magnitudes))
@@ -270,7 +271,7 @@ if __name__ == "__main__":
         ax2.add_artist(light)
 
     # Create FuncAnimation object and **choose update function accordingly**  SDFT Network / SDFT)
-    ani = FuncAnimation(fig, update_sdft, frames=range(100), init_func=init, blit=True)
+    ani = FuncAnimation(fig, update_stable_sdft, frames=range(100), init_func=init, blit=True)
 
     # Start audio stream
     with sd.InputStream(callback=callback):
