@@ -233,9 +233,9 @@ def update_stable_sdft(frame: int) -> List[Any]:
     k = 5
     audio_data_complex = audio_data.astype(np.complex128, copy=False)
 
-    # calculate bin for k=1
-    sdft_result_k1 = cython_stable_sdft(audio_data_complex, N, k) # cython is now extremely optmised for this function
-    valid_magnitudes = np.abs(sdft_result_k1)
+    # calculate bin for k=freq bin (here we're using k=5)
+    sdft_result_kx = cython_stable_sdft(audio_data_complex, N, k) # cython is now extremely optmised for this function
+    valid_magnitudes = np.abs(sdft_result_kx)
 
     freqs = np.linspace(0, fs // 2, len(valid_magnitudes))
 
