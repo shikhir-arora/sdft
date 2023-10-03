@@ -13,7 +13,10 @@ python -c "import Cython; print(Cython.__version__)"
 python -c "import numpy; print(numpy.get_include())"
 
 # Compile Cython code manually
-C_INCLUDE_PATH=$(python -c 'import numpy; print(numpy.get_include())') cythonize -a -i cython_sdft_functions.pyx
+C_INCLUDE_PATH=$(python -c 'import numpy; print(numpy.get_include())') \
+CFLAGS="-O3 -g -march=native -funroll-loops" \
+cythonize -a -i cython_sdft_functions.pyx
+
 
 # Install project and dependencies
 pip install -e .
