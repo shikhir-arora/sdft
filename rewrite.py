@@ -31,7 +31,9 @@ def make_audio_cmap(bands: List[int]) -> Any:
     new_cmap = np.vstack(cmap_colors)
     return colors.ListedColormap(new_cmap)
 
-cmap = make_audio_cmap([20, 120, 420, 1000, 3000, 6000, 8000, 12000, 18000])
+# Update the frequency bands to align with Mel scale
+mel_freqs = generate_mel_freqs(8, 44100)
+cmap = make_audio_cmap(mel_freqs)
 
 def initialize_plot() -> Any:
     """
@@ -88,20 +90,19 @@ def update_sdft(frame: int) -> List:
     """
     global audio_data, cmap
     audio_data_complex = audio_data.astype(np.complex128, copy=False)
-    sdft_results = cython_sdft(audio_data_complex, 50)
+    sdft_results = cython_sdft(audio_data_complex, 1024)
     half_len = len(sdft_results) // 2
     freqs = generate_mel_freqs(half_len, 44100)
     valid_magnitudes = np.abs(sdft_results[:half_len])
     line.set_data(freqs, valid_magnitudes)
     band_values = cython_psychoacoustic_mapping(freqs, valid_magnitudes)
-    color_norm = plt.Normalize(0, 50)
+    color_norm = plt.Normalize(0, np.max(valid_magnitudes))
 
     for i, (band, magnitude) in enumerate(band_values.items()):
         if i < len(lights):
             color_value = cmap(color_norm(magnitude))
             lights[i].set_color(color_value)
 
-    print(band_values)
     return [line] + lights
 
 def update_stable_sdft(frame: int) -> List[Any]:
@@ -119,18 +120,25 @@ def update_stable_sdft(frame: int) -> List[Any]:
     N = 1024
     audio_data_complex = audio_data.astype(np.complex128, copy=False)
     
-    all_magnitudes = np.zeros(N // 2)
-    for k in range(N // 2):
+    # Check signal amplitude
+    signal_amplitude = np.abs(audio_data).mean()
+    
+    # Use SDFT if signal amplitude is high, otherwise use stable SDFT for a fixed bin
+    if signal_amplitude > 1000:  # Arbitrary threshold for demonstration
+        sdft_results = cython_sdft(audio_data_complex, N)
+        half_len = len(sdft_results) // 2
+        valid_magnitudes = np.abs(sdft_results[:half_len])
+        freqs = generate_mel_freqs(half_len, fs)
+    else:
+        k = 5  # Use a fixed k value for simplicity
         sdft_result_k = cython_stable_sdft(audio_data_complex, N, k)
         valid_magnitudes = np.abs(sdft_result_k)
-        all_magnitudes[k] = valid_magnitudes[0]
+        freqs = generate_mel_freqs(len(valid_magnitudes), fs)
     
-    mel_freqs = generate_mel_freqs(N // 2, fs)
-    line.set_data(mel_freqs, all_magnitudes)
+    line.set_data(freqs, valid_magnitudes)
+    band_values = cython_psychoacoustic_mapping(freqs, valid_magnitudes)
+    color_norm = plt.Normalize(0, np.max(valid_magnitudes))
 
-    # Update psychoacoustic bands
-    band_values = cython_psychoacoustic_mapping(mel_freqs, all_magnitudes)
-    color_norm = plt.Normalize(0, 50)
     for i, (band, magnitude) in enumerate(band_values.items()):
         if i < len(lights):
             color_value = cmap(color_norm(magnitude))
