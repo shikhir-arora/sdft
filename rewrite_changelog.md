@@ -1,20 +1,34 @@
 # Flowchart for `cython_stable_sdft` Function
 
 ## Flowchart
-
 ```mermaid
 graph TD
     A[Start] --> B[Initialize Variables and Allocate Memory]
     B --> C[Check Memory Allocation]
-    C --> D[Compute Quantized Coefficients]
+    C --> D[Quantize Feed-Forward Coefficients]
     D --> E[Initialize norm_factor Array]
     E --> F[Apply Filter to Compute Stable SDFT]
-    F --> G[Compute y_real and y_imag for Each Sample]
+    F --> G[Apply Filter Coefficients to Compute y_real and y_imag]
     G --> H[Normalize Output]
     H --> I[Convert Results to NumPy Array]
     I --> J[Free Allocated Memory]
     J --> K[Return Result]
+
+subgraph "Filter Application Loop"
+    direction LR
+    F --> L[Loop Over Each Sample]
+    L --> M[Compute y_real and y_imag]
+end
+
+subgraph "Normalization and Conversion"
+    direction LR
+    H --> N[Loop Over Each Sample for Normalization]
+    N --> O[Normalize y_real and y_imag]
+    O --> P[Convert to NumPy Array]
+end
 ```
+
+---
 
 ## Detailed Flowchart Description
 
@@ -55,4 +69,3 @@ graph TD
 
 10. **Return Result**
     - Return the final result as a NumPy array of complex numbers.
-```

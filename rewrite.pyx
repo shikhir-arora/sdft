@@ -9,12 +9,32 @@ from typing import Dict
 
 # Define the quantization function
 cdef double Quantize(double value):
+    """
+    Quantize a given value to ensure at least 15 bits of precision.
+    
+    Parameters:
+        value (double): The value to be quantized.
+    
+    Returns:
+        double: The quantized value.
+    """
     cdef double Factor = 2**15  # Ensure at least 15 bits of precision
     return Factor * round((value / Factor) * 131072) / 131072  # 131072 is 2**17 for high precision
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cpdef np.ndarray[complex, ndim=1] cython_stable_sdft(complex[::1] signal, int N, int k):
+    """
+    Compute the Stable Sliding Discrete Fourier Transform (SDFT) of a given signal at a specific frequency bin.
+    
+    Parameters:
+        signal (complex[::1]): The input complex signal array.
+        N (int): The number of points for the Fourier Transform.
+        k (int): The frequency bin index.
+    
+    Returns:
+        np.ndarray[complex, ndim=1]: The stable SDFT of the input signal.
+    """
     cdef int n = len(signal)
     cdef double *y_real = <double *> malloc(n * sizeof(double))
     cdef double *y_imag = <double *> malloc(n * sizeof(double))
@@ -89,6 +109,13 @@ cpdef np.ndarray[complex, ndim=1] cython_stable_sdft(complex[::1] signal, int N,
 cpdef np.ndarray[complex, ndim=1] cython_sdft(complex[::1] signal, int n):
     """
     Compute the Sliding Discrete Fourier Transform (SDFT) of a given signal.
+    
+    Parameters:
+        signal (complex[::1]): The input complex signal array.
+        n (int): The number of points for the Fourier Transform.
+    
+    Returns:
+        np.ndarray[complex, ndim=1]: The SDFT of the input signal.
     """
     cdef complex omega = cos(-2 * pi / n) + 1j * sin(-2 * pi / n)
     cdef complex x_prev = 0 + 0j
@@ -106,6 +133,16 @@ cpdef np.ndarray[complex, ndim=1] cython_sdft(complex[::1] signal, int n):
     return np.asarray(x)
 
 cpdef Dict[str, float] cython_psychoacoustic_mapping(double[::1] freqs, double[::1] mags):
+    """
+    Map frequencies to psychoacoustic bands and sum the magnitudes within each band.
+    
+    Parameters:
+        freqs (double[::1]): Array of frequency values.
+        mags (double[::1]): Array of magnitude values corresponding to the frequencies.
+    
+    Returns:
+        Dict[str, float]: Dictionary containing the summed magnitudes for each psychoacoustic band.
+    """
     cdef Dict[str, tuple] bands = {
         "Sub-Bass": (20, 120),
         "Bass": (120, 420),
@@ -131,3 +168,45 @@ cpdef Dict[str, float] cython_psychoacoustic_mapping(double[::1] freqs, double[:
         band_values[band] = sum_value
 
     return band_values
+
+cdef double hz_to_mel(double hz):
+    """
+    Convert frequency in Hertz to Mel scale.
+    
+    Parameters:
+        hz (double): Frequency in Hertz.
+    
+    Returns:
+        double: Frequency in Mel scale.
+    """
+    return 2595 * np.log10(1 + hz / 700)
+
+cdef double mel_to_hz(double mel):
+    """
+    Convert frequency in Mel scale to Hertz.
+    
+    Parameters:
+        mel (double): Frequency in Mel scale.
+    
+    Returns:
+        double: Frequency in Hertz.
+    """
+    return 700 * (10**(mel / 2595) - 1)
+
+cpdef np.ndarray[double, ndim=1] generate_mel_freqs(int num_bins, int fs):
+    """
+    Generate an array of frequencies in Hertz corresponding to Mel scale bins.
+    
+    Parameters:
+        num_bins (int): Number of Mel scale bins.
+        fs (int): Sampling frequency.
+    
+    Returns:
+        np.ndarray[double, ndim=1]: Array of frequencies in Hertz.
+    """
+    cdef double mel_max = hz_to_mel(fs // 2)
+    cdef np.ndarray[double, ndim=1] mel_bins = np.linspace(0, mel_max, num_bins)
+    cdef np.ndarray[double, ndim=1] hz_bins = np.empty(num_bins, dtype=np.double)
+    for I in range(num_bins):
+        hz_bins[I] = mel_to_hz(mel_bins[I])
+    return hz_bins

@@ -5,43 +5,18 @@ from matplotlib.animation import FuncAnimation
 import matplotlib.cm as cm
 import sounddevice as sd
 from typing import Dict, List, Any
-from rewrite import cython_stable_sdft, cython_sdft, cython_psychoacoustic_mapping
-
-
-def sdft(signal: np.ndarray, n: int) -> np.ndarray:
-    omega = np.exp(-1j * 2 * np.pi / n)
-    x_prev = 0 + 0j
-    x = []
-    for i in range(n):
-        x_prev += signal[i] * np.exp(-1j * 2 * np.pi * i / n)
-        x.append(x_prev)
-    for i in range(n, len(signal)):
-        x_curr = x_prev - signal[i - n] + signal[i]
-        x.append(x_curr * omega)
-        x_prev = x_curr
-    return np.array(x)
-
-
-def psychoacoustic_mapping(freqs: np.ndarray, mags: np.ndarray) -> Dict[str, float]:
-    bands = {
-        "Sub-Bass": (20, 120),
-        "Bass": (120, 420),
-        "Low Mid-Bass": (420, 1000),
-        "Mid-Bass": (1000, 3000),
-        "Midrange": (3000, 6000),
-        "Presence": (6000, 8000),
-        "Upper Midrange": (8000, 9500),
-        "Brilliance": (9500, 16000),
-    }
-
-    band_values = {}
-    for band, (f_low, f_high) in bands.items():
-        band_values[band] = np.sum(mags[(freqs >= f_low) & (freqs <= f_high)])
-
-    return band_values
-
+from rewrite import cython_stable_sdft, cython_sdft, cython_psychoacoustic_mapping, generate_mel_freqs
 
 def make_audio_cmap(bands: List[int]) -> Any:
+    """
+    Create a custom colormap based on the audio frequency bands provided.
+
+    Parameters:
+        bands (List[int]): List of frequency bands for which to make the colormap.
+
+    Returns:
+        Any: Custom colormap for Matplotlib.
+    """
     base_cmap = cm.turbo
     min_freq = min(bands)
     max_freq = max(bands)
@@ -56,45 +31,69 @@ def make_audio_cmap(bands: List[int]) -> Any:
     new_cmap = np.vstack(cmap_colors)
     return colors.ListedColormap(new_cmap)
 
-
 cmap = make_audio_cmap([20, 120, 420, 1000, 3000, 6000, 8000, 12000, 18000])
 
-
 def initialize_plot() -> Any:
+    """
+    Initialize the plot for real-time audio visualization.
+
+    Returns:
+        Any: Matplotlib Figure and Axes objects.
+    """
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
     (line,) = ax1.plot([], [], lw=2, color="c")
-    ax1.set_xscale("log")
-    ax1.set_xlim(20, 20000)
+    ax1.set_xlim(0, 2595 * np.log10(1 + 22050 / 700))  # Use Mel scale max value for fs/2
     ax1.set_ylim(0, 50)
     ax1.grid(True)
-    ax1.set_title("Real-Time S(DFT) Magnitude (20 Hz - 20 kHz)", fontsize=16)
-    ax1.set_xlabel("Frequency (Hz)", fontsize=14)
-    ax1.set_ylabel("Magnitude", fontsize=14)
+    ax1.set_title("Real-Time Frequency Magnitude (Mel Scale)")
+    ax1.set_xlabel("Frequency (Mel)")
+    ax1.set_ylabel("Magnitude")
     ax2.axis("off")
     ax2.set_xlim(-1, 1)
     ax2.set_ylim(-1, 1)
     return fig, ax1, ax2, line
 
-
 def callback(indata: np.ndarray, frames: int, time: float, status: Any) -> None:
+    """
+    Callback function for sounddevice to update the audio data.
+
+    Parameters:
+        indata (np.ndarray): Incoming audio data.
+        frames (int): Number of audio frames.
+        time (float): Time information.
+        status (Any): Status information.
+    """
     global audio_data
     audio_data = indata[:, 0]
 
-
 def init() -> List:
+    """
+    Initialization function for Matplotlib FuncAnimation.
+
+    Returns:
+        List: List of Matplotlib Artist objects to be updated.
+    """
     line.set_data([], [])
     return [line] + lights
 
-
 def update_sdft(frame: int) -> List:
+    """
+    Update function for Matplotlib FuncAnimation to update the plot in real-time using regular SDFT.
+
+    Parameters:
+        frame (int): The current frame number in the animation.
+
+    Returns:
+        List: A list containing the updated line and light objects for the plot.
+    """
     global audio_data, cmap
     audio_data_complex = audio_data.astype(np.complex128, copy=False)
-    sdft_results = sdft(audio_data_complex, 50)
+    sdft_results = cython_sdft(audio_data_complex, 50)
     half_len = len(sdft_results) // 2
-    freqs = np.linspace(20, 20000, half_len)
+    freqs = generate_mel_freqs(half_len, 44100)
     valid_magnitudes = np.abs(sdft_results[:half_len])
     line.set_data(freqs, valid_magnitudes)
-    band_values = psychoacoustic_mapping(freqs, valid_magnitudes)
+    band_values = cython_psychoacoustic_mapping(freqs, valid_magnitudes)
     color_norm = plt.Normalize(0, 50)
 
     for i, (band, magnitude) in enumerate(band_values.items()):
@@ -105,29 +104,41 @@ def update_sdft(frame: int) -> List:
     print(band_values)
     return [line] + lights
 
-
 def update_stable_sdft(frame: int) -> List[Any]:
+    """
+    Update function for Matplotlib FuncAnimation to update the plot in real-time using stable SDFT.
+
+    Parameters:
+        frame (int): The current frame number in the animation.
+
+    Returns:
+        List: A list containing the updated line and light objects for the plot.
+    """
     global audio_data, cmap
     fs = 44100
-    N = 150
-    k = 5
+    N = 1024
     audio_data_complex = audio_data.astype(np.complex128, copy=False)
-    sdft_result_kx = cython_stable_sdft(audio_data_complex, N, k)
-    valid_magnitudes = np.abs(sdft_result_kx)
-    freqs = np.linspace(0, fs // 2, len(valid_magnitudes))
-    line.set_data(freqs, valid_magnitudes)
-    band_values = cython_psychoacoustic_mapping(freqs, valid_magnitudes)
-    color_norm = plt.Normalize(0, np.max(valid_magnitudes))
+    
+    all_magnitudes = np.zeros(N // 2)
+    for k in range(N // 2):
+        sdft_result_k = cython_stable_sdft(audio_data_complex, N, k)
+        valid_magnitudes = np.abs(sdft_result_k)
+        all_magnitudes[k] = valid_magnitudes[0]
+    
+    mel_freqs = generate_mel_freqs(N // 2, fs)
+    line.set_data(mel_freqs, all_magnitudes)
 
+    # Update psychoacoustic bands
+    band_values = cython_psychoacoustic_mapping(mel_freqs, all_magnitudes)
+    color_norm = plt.Normalize(0, 50)
     for i, (band, magnitude) in enumerate(band_values.items()):
         if i < len(lights):
             color_value = cmap(color_norm(magnitude))
             lights[i].set_color(color_value)
 
-    print(band_values)
     return [line] + lights
 
-
+# Main function
 if __name__ == "__main__":
     audio_data = np.zeros(1024)
     fig, ax1, ax2, line = initialize_plot()
