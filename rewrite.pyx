@@ -26,12 +26,12 @@ cdef double Quantize(double value):
 cpdef np.ndarray[complex, ndim=1] cython_stable_sdft(complex[::1] signal, int N, int k):
     """
     Compute the Stable Sliding Discrete Fourier Transform (SDFT) of a given signal at a specific frequency bin.
-    
+
     Parameters:
-        signal (complex[::1]): The input complex signal array.
-        N (int): The number of points for the Fourier Transform.
-        k (int): The frequency bin index.
-    
+    signal (complex[::1]): The input complex signal array.
+    N (int): The number of points for the Fourier Transform.
+    k (int): The frequency bin index.
+
     Returns:
         np.ndarray[complex, ndim=1]: The stable SDFT of the input signal.
     """
@@ -39,12 +39,14 @@ cpdef np.ndarray[complex, ndim=1] cython_stable_sdft(complex[::1] signal, int N,
     cdef double *y_real = <double *> malloc(n * sizeof(double))
     cdef double *y_imag = <double *> malloc(n * sizeof(double))
     cdef double *norm_factor = <double *> malloc(n * sizeof(double))
+    cdef double *result_real = <double *> malloc(n * sizeof(double))
+    cdef double *result_imag = <double *> malloc(n * sizeof(double))
     cdef double exp_factor_real, exp_factor_imag, cos_factor
     cdef double B_real[3], B_imag[3]
     cdef double A[3]
     cdef int I
 
-    if y_real is NULL or y_imag is NULL or norm_factor is NULL:
+    if y_real is NULL or y_imag is NULL or norm_factor is NULL or result_real is NULL or result_imag is NULL:
         raise MemoryError("Could not allocate buffer.")
 
     # Quantize feed-forward coefficients (outside the loop)
@@ -55,54 +57,49 @@ cpdef np.ndarray[complex, ndim=1] cython_stable_sdft(complex[::1] signal, int N,
     B_real[0] = exp_factor_real
     B_real[1] = -1.0
     B_real[2] = -exp_factor_real
-
     B_imag[0] = exp_factor_imag
     B_imag[1] = 0.0
     B_imag[2] = -exp_factor_imag
-
     A[0] = 1.0
     A[1] = cos_factor
     A[2] = 1.0
 
     # Initialize norm_factor
     for I in range(n):
-        norm_factor[I] = 1.0  # Simplified normalization
+        norm_factor[I] = 1.0
 
     # Apply the filter
-    for I in range(n):
-        y_real[I] = signal[I].real * B_real[0] - signal[I].imag * B_imag[0]
-        y_imag[I] = signal[I].real * B_imag[0] + signal[I].imag * B_real[0]
-        
-        if I > 0:
-            y_real[I] += signal[I-1].real * B_real[1] - signal[I-1].imag * B_imag[1]
-            y_imag[I] += signal[I-1].real * B_imag[1] + signal[I-1].imag * B_real[1]
-        
-        if I > 1:
-            y_real[I] += signal[I-2].real * B_real[2] - signal[I-2].imag * B_imag[2]
-            y_imag[I] += signal[I-2].real * B_imag[2] + signal[I-2].imag * B_real[2]
-        
-        if I > 0:
-            y_real[I] -= y_real[I-1] * A[1]
-            y_imag[I] -= y_imag[I-1] * A[1]
-        
-        if I > 1:
-            y_real[I] -= y_real[I-2] * A[2]
-            y_imag[I] -= y_imag[I-2] * A[2]
-
     with nogil, parallel():
         for I in prange(n):
+            y_real[I] = signal[I].real * B_real[0] - signal[I].imag * B_imag[0]
+            y_imag[I] = signal[I].real * B_imag[0] + signal[I].imag * B_real[0]
+            if I > 0:
+                y_real[I] += signal[I-1].real * B_real[1] - signal[I-1].imag * B_imag[1]
+                y_imag[I] += signal[I-1].real * B_imag[1] + signal[I-1].imag * B_real[1]
+            if I > 1:
+                y_real[I] += signal[I-2].real * B_real[2] - signal[I-2].imag * B_imag[2]
+                y_imag[I] += signal[I-2].real * B_imag[2] + signal[I-2].imag * B_real[2]
+            if I > 0:
+                y_real[I] -= y_real[I-1] * A[1]
+                y_imag[I] -= y_imag[I-1] * A[1]
+            if I > 1:
+                y_real[I] -= y_real[I-2] * A[2]
+                y_imag[I] -= y_imag[I-2] * A[2]
             if norm_factor[I] == 0:
                 norm_factor[I] = 1e-30  # Avoid division by zero
-            y_real[I] /= norm_factor[I]
-            y_imag[I] /= norm_factor[I]
+            result_real[I] = y_real[I] / norm_factor[I]
+            result_imag[I] = y_imag[I] / norm_factor[I]
 
+    # Convert C arrays to NumPy arrays
     cdef np.ndarray[complex, ndim=1] result = np.empty(n, dtype=complex)
     for I in range(n):
-        result[I] = y_real[I] + 1j * y_imag[I]
+        result[I] = result_real[I] + 1j * result_imag[I]
 
     free(y_real)
     free(y_imag)
     free(norm_factor)
+    free(result_real)
+    free(result_imag)
 
     return result
 
