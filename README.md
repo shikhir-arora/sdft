@@ -1,4 +1,54 @@
-# TODO Docs/FAQ/Analysis
+# TODO Docs/FAQ/Analysis/Cleanups 
+
+_(Note: This is **very much a WIP** and _probably_ will break...😆)_
+
+---
+
+## Installation
+
+We recommend using **rye**, a modern Python packaging and environment management tool, for easy and efficient environment management.
+
+### Using rye (Recommended)
+
+Rye allows you to handle Python environments, install dependencies, and even manage Python versions all within one tool. To install rye, run the following command:
+
+```bash
+curl -sSf https://rye-up.com/get | bash
+```
+
+After installing Rye, you can use it to install packages or set up your Python environment. For example, to install the package in your current environment:
+
+```bash
+rye install
+```
+
+Once Rye is set up, it will automatically handle your project's dependencies by reading from `pyproject.toml`. If you want to create a new virtual environment, Rye does that automatically in the background. You can also install Python itself with Rye, meaning you don’t even need to manage Python installations manually.
+
+Learn more about Rye's capabilities [here](https://rye.astral.sh/).
+
+### Using uv
+
+Alternatively, you can use **uv**, a superfast Python package installer. If you prefer to use uv, just run:
+
+```bash
+uv install .
+```
+
+Find more about uv on [GitHub](https://github.com/astral-sh/uv?tab=readme-ov-file#uv).
+
+### Using pip
+
+If you prefer using **pip**, you can install the package in editable mode, which is useful for development:
+
+```bash
+pip install -e .
+```
+
+Pip is straightforward for installing and managing Python packages, but it doesn’t manage environments or Python installations as Rye does. 🚀 
+
+---
+
+### Some Visuals
 
 
 ![Figure_1](https://github.com/shikhir-arora/sdft/assets/8797918/ce7b2478-01fa-43af-a802-f9888f3f01e0) 

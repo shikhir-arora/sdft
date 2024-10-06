@@ -1,0 +1,66 @@
+[build-system]
+requires = [
+    "setuptools>=75.1.0",
+    "wheel>=0.44.0",
+    "Cython>=3.0.11",
+    "numpy>=2.1.2"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "SDFT"
+version = "0.2.0"
+description = "Sliding Discrete Fourier Transform (SDFT) Implementation"
+readme = "README.md"
+requires-python = ">=3.13"
+keywords = ["SDFT", "Fourier Transform", "Signal Processing", "Audio"]
+license = { text = "MIT" }
+authors = [
+    { name = "Shikhir Arora", email = "shikhir@thesarogroup.com" }
+]
+classifiers = [
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Cython",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Multimedia :: Sound/Audio :: Analysis"
+]
+dependencies = [
+    "numpy>=2.1.2",
+    "scipy>=1.14.1",
+    "matplotlib>=3.9.2",
+    "sounddevice>=0.5.0",
+    "rich>=13.9.2"
+]
+
+[project.urls]
+Homepage = "https://github.com/shikhir-arora/sdft"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.3",
+    "black>=24.8.0",
+    "flake8>=7.1.1",
+    "mypy>=1.11.2"
+]
+
+[tool.setuptools]
+packages = ["sdft"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+sdft = ["*.pxd", "*.pyx", "*.c", "*.h"]
+
+[tool.setuptools.extension]
+extensions = [
+    {
+        name = "cython_sdft_functions",
+        sources = ["cython_sdft_functions.pyx"],
+        include-dirs = ["{numpy_includes}"],
+        define-macros = [["CYTHON_WITHOUT_ASSERTIONS", "1"]],
+        language = "c",
+    }
+]
