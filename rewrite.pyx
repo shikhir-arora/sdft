@@ -5,6 +5,7 @@ cimport numpy as np
 import numpy as np
 from cython.parallel import prange, parallel
 from libc.stdlib cimport malloc, free
+from typing import List, Dict
 
 cpdef np.ndarray[complex, ndim=1] cython_stable_sdft(complex[::1] signal, int N, int k):
     """
@@ -59,10 +60,11 @@ cpdef np.ndarray[complex, ndim=1] cython_stable_sdft(complex[::1] signal, int N,
         y[i] = 0
         norm_factor[i] = 0
 
+    cdef complex sum_val
+
     # Apply the filter
     with nogil:
         for i in range(n):
-            cdef complex sum_val = 0
             # Feedforward part
             for j in range(4):
                 if i - j >= 0:

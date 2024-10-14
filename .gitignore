@@ -1,3 +1,5 @@
 .eggs
 .DS_Store
 build
+SDFT.egg-info
+__pycache__
